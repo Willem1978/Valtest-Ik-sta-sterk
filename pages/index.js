@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Eye, Footprints, Dumbbell, Pill, Apple, Home, ChevronRight, ChevronLeft, Check, AlertCircle, Phone, MapPin, Clock, Heart, Shield, Users, FileText, CheckCircle2, ArrowRight, X, Send, ArrowLeft, Calendar, Lightbulb } from 'lucide-react';
 
+// Supabase configuratie
+const SUPABASE_URL = 'https://bggavoacfhmxcbeiixjf.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_nnGd9pTnIuI92K9K_zZt-w_1Qb0fug6';
+
 const IkStaSterkTest = () => {
   const [currentScreen, setCurrentScreen] = useState('welcome');
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -19,6 +23,8 @@ const IkStaSterkTest = () => {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [screenHistory, setScreenHistory] = useState([]);
+  const [dataSaved, setDataSaved] = useState(false);
+  const [savedRecordId, setSavedRecordId] = useState(null);
   
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -903,6 +909,95 @@ const IkStaSterkTest = () => {
     return 'matig';
   };
 
+  // Functie om testresultaten naar Supabase te sturen
+  const saveToDatabase = async (woonplaatsValue, emailValue, calculatedRiskLevel) => {
+    try {
+      const data = {
+        // Demografische gegevens
+        woonplaats: woonplaatsValue,
+        leeftijd: demographics.age,
+        geslacht: demographics.gender,
+        email: emailValue || null,
+        
+        // Risiconiveau
+        risiconiveau: calculatedRiskLevel,
+        
+        // Antwoorden risicovragen
+        v1_gevallen: answers.v1 ?? null,
+        v2_bang_vallen: answers.v2 ?? null,
+        v3_moeite_bewegen: answers.v3 ?? null,
+        v4_verwondingen: answers.v4 ?? null,
+        v5_vaker_gevallen: answers.v5 ?? null,
+        v6_flauwgevallen: answers.v6 ?? null,
+        v7_zelf_opstaan: answers.v7 ?? null,
+        v8_taken_zelf: answers.v8 ?? null,
+        
+        // Antwoorden preventievragen
+        p1_ogen: preventionAnswers.p1 ?? null,
+        p2_schoenen: preventionAnswers.p2 ?? null,
+        p3_beweging: preventionAnswers.p3 ?? null,
+        p4_medicijnen: preventionAnswers.p4 ?? null,
+        p5_voeding: preventionAnswers.p5 ?? null,
+        p6_woonomgeving: preventionAnswers.p6 ?? null,
+      };
+
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/testresultaten`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Data opgeslagen:', result);
+        setDataSaved(true);
+        if (result && result[0] && result[0].id) {
+          setSavedRecordId(result[0].id);
+        }
+        return result;
+      } else {
+        console.error('Fout bij opslaan:', response.status, await response.text());
+        return null;
+      }
+    } catch (error) {
+      console.error('Fout bij versturen naar database:', error);
+      return null;
+    }
+  };
+
+  // Functie om fysiotherapie contact toe te voegen aan bestaand record
+  const updateFysioContact = async (fysioNaam, contactNaam, contactTelefoon) => {
+    if (!savedRecordId) return;
+    
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/testresultaten?id=eq.${savedRecordId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          fysio_contact_aangevraagd: true,
+          fysio_praktijk: fysioNaam,
+          fysio_naam: contactNaam,
+          fysio_telefoon: contactTelefoon
+        })
+      });
+
+      if (response.ok) {
+        console.log('Fysio contact opgeslagen');
+      }
+    } catch (error) {
+      console.error('Fout bij updaten fysio contact:', error);
+    }
+  };
+
   const animateTransition = (cb) => { 
     setAnimating(true); 
     setTimeout(() => { cb(); setAnimating(false); }, 150); 
@@ -1695,7 +1790,7 @@ const IkStaSterkTest = () => {
       </div>
 
       <PrimaryButton 
-        onClick={() => {
+        onClick={async () => {
           // Lees woonplaats direct uit het input veld
           const woonplaatsValue = woonplaatsInputRef.current ? woonplaatsInputRef.current.value.trim() : '';
           const emailValue = emailInputRef.current ? emailInputRef.current.value.trim() : '';
@@ -1726,8 +1821,14 @@ const IkStaSterkTest = () => {
           setWoonplaats(correctWoonplaats || woonplaatsValue);
           setDemographics(prev => ({ ...prev, email: emailValue }));
           
+          // Bereken risiconiveau
+          const calculatedRiskLevel = calculateRiskLevel();
+          setRiskLevel(calculatedRiskLevel);
+          
+          // Sla data op in Supabase (async, wacht niet op resultaat)
+          saveToDatabase(correctWoonplaats || woonplaatsValue, emailValue, calculatedRiskLevel);
+          
           // Ga door naar resultaten
-          setRiskLevel(calculateRiskLevel()); 
           setReportPage(0); 
           animateTransition(() => setCurrentScreen('report'));
         }} 
