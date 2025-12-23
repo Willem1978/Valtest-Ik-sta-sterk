@@ -1689,6 +1689,16 @@ const IkStaSterkTest = () => {
 
   // AANGEPAST: Demographics met GenderButton en woonplaats dropdown
   const renderDemographics = () => {
+    // Leeftijdsopties
+    const leeftijdOpties = [
+      { v: '65-69', l: '65-69 jaar' },
+      { v: '70-74', l: '70-74 jaar' },
+      { v: '75-79', l: '75-79 jaar' },
+      { v: '80-84', l: '80-84 jaar' },
+      { v: '85-89', l: '85-89 jaar' },
+      { v: '90+', l: '90 jaar of ouder' },
+    ];
+    
     return (
     <Card>
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -1710,24 +1720,55 @@ const IkStaSterkTest = () => {
         <p style={{ fontSize: '15px', color: ZLIM.textMedium }}>Hiermee kunnen we je beter adviseren</p>
       </div>
 
+      {/* Leeftijd */}
+      <div style={{ marginBottom: '24px' }}>
+        <label style={{ display: 'block', fontSize: '15px', fontWeight: FONT.bold, marginBottom: '10px', color: ZLIM.textDark }}>
+          Wat is je leeftijd?
+        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+          {leeftijdOpties.map(opt => (
+            <button 
+              key={opt.v}
+              onClick={() => setDemographics(prev => ({ ...prev, age: opt.v }))}
+              style={{ 
+                padding: '12px 14px', 
+                borderRadius: '10px', 
+                border: `2px solid ${demographics.age === opt.v ? ZLIM.sage : ZLIM.border}`, 
+                background: demographics.age === opt.v ? ZLIM.sagePale : ZLIM.white, 
+                cursor: 'pointer', 
+                fontFamily: FONT.family, 
+                fontSize: '14px', 
+                fontWeight: FONT.semibold, 
+                color: demographics.age === opt.v ? ZLIM.sageDark : ZLIM.textDark, 
+                textAlign: 'center', 
+                transition: 'all 0.2s',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              {opt.l}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Geslacht met hover effect */}
       <div style={{ marginBottom: '24px' }}>
         <label style={{ display: 'block', fontSize: '15px', fontWeight: FONT.bold, marginBottom: '10px', color: ZLIM.textDark }}>
           Wat is je geslacht?
         </label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {[{ v: 'M', l: 'Man' }, { v: 'V', l: 'Vrouw' }, { v: 'A', l: 'Anders / zeg ik liever niet' }].map(opt => (
+          {[{ v: 'man', l: 'Man' }, { v: 'vrouw', l: 'Vrouw' }, { v: 'anders', l: 'Anders / zeg ik liever niet' }].map(opt => (
             <GenderButton 
               key={opt.v}
               option={opt}
               isSelected={demographics.gender === opt.v}
-              onClick={() => setDemographics({ ...demographics, gender: opt.v })}
+              onClick={() => setDemographics(prev => ({ ...prev, gender: opt.v }))}
             />
           ))}
         </div>
       </div>
 
-      {/* Woonplaats - volledig uncontrolled input */}
+      {/* Woonplaats - controlled input */}
       <div style={{ marginBottom: '24px' }}>
         <label 
           htmlFor="woonplaatsField"
@@ -1744,7 +1785,8 @@ const IkStaSterkTest = () => {
           list="woonplaatsenList"
           autoComplete="off"
           placeholder="Begin met typen..."
-          defaultValue=""
+          value={woonplaats}
+          onChange={(e) => setWoonplaats(e.target.value)}
           style={{ 
             width: '100%', 
             padding: '14px 18px', 
@@ -1766,7 +1808,7 @@ const IkStaSterkTest = () => {
         </p>
       </div>
 
-      {/* E-mail - ook uncontrolled om re-renders te voorkomen */}
+      {/* E-mail - controlled input */}
       <div style={{ marginBottom: '28px' }}>
         <label style={{ display: 'block', fontSize: '15px', fontWeight: FONT.bold, marginBottom: '6px', color: ZLIM.textDark }}>
           Je e-mailadres <span style={{ fontWeight: FONT.regular, color: ZLIM.textMedium }}>(optioneel)</span>
@@ -1776,7 +1818,8 @@ const IkStaSterkTest = () => {
           type="email" 
           name="email"
           placeholder="naam@voorbeeld.nl"
-          defaultValue=""
+          value={demographics.email}
+          onChange={(e) => setDemographics(prev => ({ ...prev, email: e.target.value }))}
           style={{ 
             width: '100%', 
             padding: '14px 18px', 
@@ -1791,16 +1834,23 @@ const IkStaSterkTest = () => {
 
       <PrimaryButton 
         onClick={async () => {
-          // Lees woonplaats direct uit het input veld
-          const woonplaatsValue = woonplaatsInputRef.current ? woonplaatsInputRef.current.value.trim() : '';
-          const emailValue = emailInputRef.current ? emailInputRef.current.value.trim() : '';
+          // Lees woonplaats direct uit state
+          const woonplaatsValue = woonplaats.trim();
+          const emailValue = demographics.email.trim();
           
           // Valideer tegen de complete woonplaatsenlijst
           const isValidWoonplaats = alleWoonplaatsnamen.some(naam => 
             naam.toLowerCase() === woonplaatsValue.toLowerCase()
           );
           
-          if (!demographics.gender) return;
+          if (!demographics.age) {
+            alert('Selecteer je leeftijdscategorie');
+            return;
+          }
+          if (!demographics.gender) {
+            alert('Selecteer je geslacht');
+            return;
+          }
           if (!woonplaatsValue) {
             alert('Vul je woonplaats in');
             woonplaatsInputRef.current?.focus();
@@ -1817,9 +1867,8 @@ const IkStaSterkTest = () => {
             naam.toLowerCase() === woonplaatsValue.toLowerCase()
           );
           
-          // Sla de woonplaats en email op in state voor later gebruik
+          // Sla de woonplaats op in state voor later gebruik
           setWoonplaats(correctWoonplaats || woonplaatsValue);
-          setDemographics(prev => ({ ...prev, email: emailValue }));
           
           // Bereken risiconiveau
           const calculatedRiskLevel = calculateRiskLevel();
@@ -1832,7 +1881,7 @@ const IkStaSterkTest = () => {
           setReportPage(0); 
           animateTransition(() => setCurrentScreen('report'));
         }} 
-        disabled={!demographics.gender}
+        disabled={!demographics.gender || !demographics.age}
       >
         Bekijk mijn uitslag <ArrowRight size={20} />
       </PrimaryButton>
