@@ -1691,12 +1691,9 @@ const IkStaSterkTest = () => {
   const renderDemographics = () => {
     // Leeftijdsopties
     const leeftijdOpties = [
-      { v: '65-69', l: '65-69 jaar' },
-      { v: '70-74', l: '70-74 jaar' },
-      { v: '75-79', l: '75-79 jaar' },
-      { v: '80-84', l: '80-84 jaar' },
-      { v: '85-89', l: '85-89 jaar' },
-      { v: '90+', l: '90 jaar of ouder' },
+      { v: '65-74', l: '65 tot en met 74 jaar' },
+      { v: '75-84', l: '75 tot en met 84 jaar' },
+      { v: '85+', l: '85 jaar en ouder' },
     ];
     
     return (
