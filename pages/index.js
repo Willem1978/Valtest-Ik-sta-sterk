@@ -14,6 +14,7 @@ const IkStaSterkTest = () => {
   const [demographics, setDemographics] = useState({ age: '', gender: '', email: '' });
   const [riskLevel, setRiskLevel] = useState(null);
   const [animating, setAnimating] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // Voorkom dubbel klikken
   const [woonplaats, setWoonplaats] = useState('');
   const [userLocation, setUserLocation] = useState(null); // Behouden voor eventueel toekomstig gebruik
   const [reportPage, setReportPage] = useState(0);
@@ -1017,11 +1018,14 @@ const IkStaSterkTest = () => {
   };
 
   const handleAnswer = (answer) => { 
+    if (isProcessing) return;
+    setIsProcessing(true);
     const q = riskQuestions[currentQuestion]; 
-    if (!q) return; 
+    if (!q) { setIsProcessing(false); return; }
     setQuestionHistory(prev => [...prev, { question: currentQuestion, answers: { ...answers } }]);
     setAnswers({ ...answers, [q.id]: answer }); 
     const next = answer ? q.nextIfYes : q.nextIfNo; 
+    // Vertraging zit nu in de AnswerButton, dus animateTransition wordt direct aangeroepen
     animateTransition(() => { 
       if (next === 'end_low' || next === 'end') { 
         setScreenHistory(prev => [...prev, { screen: 'questions', question: currentQuestion }]);
@@ -1030,7 +1034,8 @@ const IkStaSterkTest = () => {
       } else { 
         const idx = riskQuestions.findIndex(x => x.id === next); 
         if (idx !== -1) setCurrentQuestion(idx); 
-      } 
+      }
+      setIsProcessing(false);
     }); 
   };
 
@@ -1044,11 +1049,14 @@ const IkStaSterkTest = () => {
   };
 
   const handlePreventionAnswer = (answer) => { 
+    if (isProcessing) return;
+    setIsProcessing(true);
     const q = preventionQuestions[currentQuestion]; 
     setPreventionAnswers({ ...preventionAnswers, [q.id]: answer }); 
     animateTransition(() => { 
       if (currentQuestion < preventionQuestions.length - 1) { setCurrentQuestion(currentQuestion + 1); } 
       else { setScreenHistory(prev => [...prev, { screen: 'prevention', question: currentQuestion }]); setCurrentScreen('demographics'); }
+      setIsProcessing(false);
     }); 
   };
 
@@ -1151,13 +1159,14 @@ const IkStaSterkTest = () => {
 
   // Antwoordknoppen in Zlimthuis stijl - touch-friendly (geen hover op mobiel)
   // AANGEPAST: Kleinere tekst zodat alles op één regel past
-  const AnswerButton = ({ children, onClick, type = 'yes' }) => {
+  const AnswerButton = ({ children, onClick, type = 'yes', disabled = false }) => {
     const [isPressed, setIsPressed] = useState(false);
+    const [isSelected, setIsSelected] = useState(false);
     const isYes = type === 'yes';
     
     // Alleen hover effect op desktop, niet op touch devices
     const handleMouseEnter = () => {
-      if (window.matchMedia('(hover: hover)').matches) {
+      if (!disabled && window.matchMedia('(hover: hover)').matches) {
         setIsPressed(true);
       }
     };
@@ -1167,40 +1176,51 @@ const IkStaSterkTest = () => {
     };
     
     const handleClick = () => {
+      if (disabled) return;
+      setIsSelected(true);
       setIsPressed(false);
-      onClick();
+      // Wacht 700ms voordat we doorgaan naar de volgende vraag
+      setTimeout(() => {
+        onClick();
+        setIsSelected(false);
+      }, 700);
     };
+    
+    const isActive = isPressed || isSelected;
     
     return (
       <button 
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onTouchStart={() => setIsPressed(true)}
+        onTouchStart={() => !disabled && setIsPressed(true)}
         onTouchEnd={() => setIsPressed(false)}
+        disabled={disabled}
         style={{
-          padding: isMobile ? '14px 10px' : '16px 16px',
+          padding: '16px 12px',
           borderRadius: '12px',
-          fontSize: isMobile ? '13px' : '14px',
+          fontSize: '15px',
           fontWeight: FONT.semibold,
-          cursor: 'pointer',
+          cursor: disabled ? 'not-allowed' : 'pointer',
           transition: 'all 0.2s ease',
           fontFamily: FONT.family,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '6px',
-          width: '100%',
-          height: isMobile ? '52px' : '56px',
-          border: `2px solid ${isPressed ? (isYes ? ZLIM.success : ZLIM.danger) : ZLIM.border}`,
-          background: isPressed ? (isYes ? ZLIM.successLight : ZLIM.dangerLight) : ZLIM.white,
-          color: isPressed ? (isYes ? ZLIM.successDark : ZLIM.dangerDark) : ZLIM.textDark,
+          gap: '8px',
+          flex: 1,
+          minWidth: 0,
+          height: '56px',
+          border: `2px solid ${isActive ? (isYes ? ZLIM.success : ZLIM.danger) : ZLIM.border}`,
+          background: isActive ? (isYes ? ZLIM.successLight : ZLIM.dangerLight) : ZLIM.white,
+          color: isActive ? (isYes ? ZLIM.successDark : ZLIM.dangerDark) : ZLIM.textDark,
+          opacity: disabled ? 0.5 : 1,
           WebkitTapHighlightColor: 'transparent',
-          whiteSpace: 'nowrap',
+          boxSizing: 'border-box',
         }}
       >
-        {isYes ? <Check size={18} color={isPressed ? ZLIM.successDark : ZLIM.success} strokeWidth={2.5} /> : <X size={18} color={isPressed ? ZLIM.dangerDark : ZLIM.danger} strokeWidth={2.5} />}
-        {children}
+        {isYes ? <Check size={20} color={isActive ? ZLIM.successDark : ZLIM.success} strokeWidth={2.5} /> : <X size={20} color={isActive ? ZLIM.dangerDark : ZLIM.danger} strokeWidth={2.5} />}
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{children}</span>
       </button>
     );
   };
@@ -1268,15 +1288,21 @@ const IkStaSterkTest = () => {
 
   // Zlimthuis Logo
   const ZlimthuisLogo = () => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-        <rect width="40" height="40" rx="10" fill={ZLIM.sage}/>
-        <path d="M10 13h20M10 20h14M10 27h17" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-        <circle cx="30" cy="27" r="4" fill="white"/>
-      </svg>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontSize: '20px', fontWeight: FONT.extrabold, color: ZLIM.sage, lineHeight: 1.1, letterSpacing: '-0.5px' }}>Zlimthuis</span>
-        <span style={{ fontSize: '10px', color: ZLIM.textLight, fontWeight: FONT.medium }}>Veilig wonen begint met inzicht</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <img 
+        src="https://www.zlimthuis.nl/media/n5cpu0o3/logo-zlimthuis-2021-nieuwe-pay-off-rgb.png" 
+        alt="Zlimthuis" 
+        style={{ height: '36px', width: 'auto' }}
+        onError={(e) => {
+          // Fallback naar tekst als afbeelding niet laadt
+          e.target.style.display = 'none';
+          e.target.nextSibling.style.display = 'flex';
+        }}
+      />
+      <div style={{ display: 'none', flexDirection: 'column' }}>
+        <span style={{ fontSize: '20px', fontWeight: FONT.extrabold, color: '#f26522', lineHeight: 1.1, letterSpacing: '-0.5px' }}>
+          <span style={{ color: '#f26522' }}>zlim</span><span style={{ color: '#333' }}>thuis</span>
+        </span>
       </div>
     </div>
   );
@@ -1502,9 +1528,9 @@ const IkStaSterkTest = () => {
 
           {/* Buttons altijd onderaan - vaste positie */}
           <div style={{ marginTop: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-              <AnswerButton onClick={() => handleAnswer(true)} type="yes">Ja</AnswerButton>
-              <AnswerButton onClick={() => handleAnswer(false)} type="no">Nee</AnswerButton>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+              <AnswerButton onClick={() => handleAnswer(true)} type="yes" disabled={isProcessing}>Ja</AnswerButton>
+              <AnswerButton onClick={() => handleAnswer(false)} type="no" disabled={isProcessing}>Nee</AnswerButton>
             </div>
 
             <button onClick={handleQuestionBack} style={{ 
@@ -1597,9 +1623,9 @@ const IkStaSterkTest = () => {
 
           {/* Buttons altijd onderaan - vaste positie */}
           <div style={{ marginTop: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-              <AnswerButton onClick={() => handlePreventionAnswer(true)} type="yes">Ja, dat doe ik</AnswerButton>
-              <AnswerButton onClick={() => handlePreventionAnswer(false)} type="no">Nee, dat doe ik niet</AnswerButton>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+              <AnswerButton onClick={() => handlePreventionAnswer(true)} type="yes" disabled={isProcessing}>Ja</AnswerButton>
+              <AnswerButton onClick={() => handlePreventionAnswer(false)} type="no" disabled={isProcessing}>Nee</AnswerButton>
             </div>
 
             <button onClick={handlePreventionBack} style={{ 
@@ -2306,19 +2332,6 @@ const IkStaSterkTest = () => {
       </div>
 
       {/* Zlimthuis verwijzing */}
-      <div style={{ 
-        background: ZLIM.bgLight, 
-        borderRadius: '14px', 
-        padding: '20px', 
-        textAlign: 'center'
-      }}>
-        <p style={{ fontSize: FONT.small, color: ZLIM.textMedium, margin: '0 0 8px' }}>
-          Op zoek naar slimme producten voor een veiliger thuis?
-        </p>
-        <p style={{ fontSize: '15px', color: ZLIM.sage, margin: 0, fontWeight: FONT.semibold }}>
-          Kijk op zlimthuis.nl
-        </p>
-      </div>
     </Card>
   );
 
