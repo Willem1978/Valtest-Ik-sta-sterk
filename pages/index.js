@@ -1689,13 +1689,6 @@ const IkStaSterkTest = () => {
 
   // AANGEPAST: Demographics met GenderButton en woonplaats dropdown
   const renderDemographics = () => {
-    // Leeftijdsopties
-    const leeftijdOpties = [
-      { v: '65-74', l: '65 tot en met 74 jaar' },
-      { v: '75-84', l: '75 tot en met 84 jaar' },
-      { v: '85+', l: '85 jaar en ouder' },
-    ];
-    
     return (
     <Card>
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -1717,37 +1710,6 @@ const IkStaSterkTest = () => {
         <p style={{ fontSize: '15px', color: ZLIM.textMedium }}>Hiermee kunnen we je beter adviseren</p>
       </div>
 
-      {/* Leeftijd */}
-      <div style={{ marginBottom: '24px' }}>
-        <label style={{ display: 'block', fontSize: '15px', fontWeight: FONT.bold, marginBottom: '10px', color: ZLIM.textDark }}>
-          Wat is je leeftijd?
-        </label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-          {leeftijdOpties.map(opt => (
-            <button 
-              key={opt.v}
-              onClick={() => setDemographics(prev => ({ ...prev, age: opt.v }))}
-              style={{ 
-                padding: '12px 14px', 
-                borderRadius: '10px', 
-                border: `2px solid ${demographics.age === opt.v ? ZLIM.sage : ZLIM.border}`, 
-                background: demographics.age === opt.v ? ZLIM.sagePale : ZLIM.white, 
-                cursor: 'pointer', 
-                fontFamily: FONT.family, 
-                fontSize: '14px', 
-                fontWeight: FONT.semibold, 
-                color: demographics.age === opt.v ? ZLIM.sageDark : ZLIM.textDark, 
-                textAlign: 'center', 
-                transition: 'all 0.2s',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              {opt.l}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Geslacht met hover effect */}
       <div style={{ marginBottom: '24px' }}>
         <label style={{ display: 'block', fontSize: '15px', fontWeight: FONT.bold, marginBottom: '10px', color: ZLIM.textDark }}>
@@ -1765,7 +1727,7 @@ const IkStaSterkTest = () => {
         </div>
       </div>
 
-      {/* Woonplaats - controlled input */}
+      {/* Woonplaats - uncontrolled input met ref */}
       <div style={{ marginBottom: '24px' }}>
         <label 
           htmlFor="woonplaatsField"
@@ -1782,8 +1744,8 @@ const IkStaSterkTest = () => {
           list="woonplaatsenList"
           autoComplete="off"
           placeholder="Begin met typen..."
-          value={woonplaats}
-          onChange={(e) => setWoonplaats(e.target.value)}
+          defaultValue={woonplaats}
+          key={`woonplaats-${currentScreen}`}
           style={{ 
             width: '100%', 
             padding: '14px 18px', 
@@ -1805,7 +1767,7 @@ const IkStaSterkTest = () => {
         </p>
       </div>
 
-      {/* E-mail - controlled input */}
+      {/* E-mail - uncontrolled input met ref */}
       <div style={{ marginBottom: '28px' }}>
         <label style={{ display: 'block', fontSize: '15px', fontWeight: FONT.bold, marginBottom: '6px', color: ZLIM.textDark }}>
           Je e-mailadres <span style={{ fontWeight: FONT.regular, color: ZLIM.textMedium }}>(optioneel)</span>
@@ -1815,8 +1777,8 @@ const IkStaSterkTest = () => {
           type="email" 
           name="email"
           placeholder="naam@voorbeeld.nl"
-          value={demographics.email}
-          onChange={(e) => setDemographics(prev => ({ ...prev, email: e.target.value }))}
+          defaultValue={demographics.email}
+          key={`email-${currentScreen}`}
           style={{ 
             width: '100%', 
             padding: '14px 18px', 
@@ -1831,19 +1793,15 @@ const IkStaSterkTest = () => {
 
       <PrimaryButton 
         onClick={async () => {
-          // Lees woonplaats direct uit state
-          const woonplaatsValue = woonplaats.trim();
-          const emailValue = demographics.email.trim();
+          // Lees waarden uit refs
+          const woonplaatsValue = woonplaatsInputRef.current ? woonplaatsInputRef.current.value.trim() : '';
+          const emailValue = emailInputRef.current ? emailInputRef.current.value.trim() : '';
           
           // Valideer tegen de complete woonplaatsenlijst
           const isValidWoonplaats = alleWoonplaatsnamen.some(naam => 
             naam.toLowerCase() === woonplaatsValue.toLowerCase()
           );
           
-          if (!demographics.age) {
-            alert('Selecteer je leeftijdscategorie');
-            return;
-          }
           if (!demographics.gender) {
             alert('Selecteer je geslacht');
             return;
@@ -1864,21 +1822,22 @@ const IkStaSterkTest = () => {
             naam.toLowerCase() === woonplaatsValue.toLowerCase()
           );
           
-          // Sla de woonplaats op in state voor later gebruik
+          // Sla de woonplaats op in state
           setWoonplaats(correctWoonplaats || woonplaatsValue);
+          setDemographics(prev => ({ ...prev, email: emailValue }));
           
           // Bereken risiconiveau
           const calculatedRiskLevel = calculateRiskLevel();
           setRiskLevel(calculatedRiskLevel);
           
-          // Sla data op in Supabase (async, wacht niet op resultaat)
+          // Sla data op in Supabase
           saveToDatabase(correctWoonplaats || woonplaatsValue, emailValue, calculatedRiskLevel);
           
           // Ga door naar resultaten
           setReportPage(0); 
           animateTransition(() => setCurrentScreen('report'));
         }} 
-        disabled={!demographics.gender || !demographics.age}
+        disabled={!demographics.gender}
       >
         Bekijk mijn uitslag <ArrowRight size={20} />
       </PrimaryButton>
