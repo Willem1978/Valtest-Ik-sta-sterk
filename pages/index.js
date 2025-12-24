@@ -1625,7 +1625,7 @@ const IkStaSterkTest = () => {
           <div style={{ marginTop: 'auto' }}>
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
               <AnswerButton onClick={() => handlePreventionAnswer(true)} type="yes" disabled={isProcessing}>Ja, dat doe ik</AnswerButton>
-              <AnswerButton onClick={() => handlePreventionAnswer(false)} type="no" disabled={isProcessing}>Nee</AnswerButton>
+              <AnswerButton onClick={() => handlePreventionAnswer(false)} type="no" disabled={isProcessing}>Nee, dat doe ik niet</AnswerButton>
             </div>
 
             <button onClick={handlePreventionBack} style={{ 
@@ -1753,7 +1753,7 @@ const IkStaSterkTest = () => {
         </div>
       </div>
 
-      {/* Woonplaats - select dropdown voor mobiel compatibiliteit */}
+      {/* Woonplaats - input met datalist voor typeahead filtering */}
       <div style={{ marginBottom: '24px' }}>
         <label 
           htmlFor="woonplaatsField"
@@ -1761,11 +1761,15 @@ const IkStaSterkTest = () => {
         >
           In welke plaats woon je?
         </label>
-        <p style={{ fontSize: '13px', color: ZLIM.textMedium, margin: '0 0 10px' }}>Selecteer je woonplaats uit de lijst</p>
-        <select
+        <p style={{ fontSize: '13px', color: ZLIM.textMedium, margin: '0 0 10px' }}>Typ je woonplaats en selecteer uit de lijst</p>
+        <input
           ref={woonplaatsInputRef}
           id="woonplaatsField"
           name="woonplaats"
+          type="text"
+          list="woonplaatsenList"
+          autoComplete="off"
+          placeholder="Typ om te zoeken..."
           defaultValue={woonplaats}
           key={`woonplaats-${currentScreen}`}
           style={{ 
@@ -1777,21 +1781,17 @@ const IkStaSterkTest = () => {
             borderRadius: '10px', 
             fontFamily: FONT.family, 
             boxSizing: 'border-box',
-            backgroundColor: ZLIM.white,
-            appearance: 'none',
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 12px center',
-            backgroundSize: '20px',
-            paddingRight: '44px',
-            cursor: 'pointer'
+            WebkitAppearance: 'none'
           }}
-        >
-          <option value="">-- Selecteer woonplaats --</option>
+        />
+        <datalist id="woonplaatsenList">
           {alleWoonplaatsnamen.map(naam => (
-            <option key={naam} value={naam}>{naam}</option>
+            <option key={naam} value={naam} />
           ))}
-        </select>
+        </datalist>
+        <p style={{ fontSize: '12px', color: ZLIM.textLight, margin: '6px 0 0' }}>
+          Bijv. Ulft, Terborg, Silvolde, Arnhem...
+        </p>
       </div>
 
       {/* E-mail - uncontrolled input met ref */}
@@ -1821,21 +1821,36 @@ const IkStaSterkTest = () => {
       <PrimaryButton 
         onClick={async () => {
           // Lees waarden uit refs
-          const woonplaatsValue = woonplaatsInputRef.current ? woonplaatsInputRef.current.value : '';
+          const woonplaatsValue = woonplaatsInputRef.current ? woonplaatsInputRef.current.value.trim() : '';
           const emailValue = emailInputRef.current ? emailInputRef.current.value.trim() : '';
+          
+          // Valideer tegen de complete woonplaatsenlijst
+          const isValidWoonplaats = alleWoonplaatsnamen.some(naam => 
+            naam.toLowerCase() === woonplaatsValue.toLowerCase()
+          );
           
           if (!demographics.gender) {
             alert('Selecteer je geslacht');
             return;
           }
           if (!woonplaatsValue) {
-            alert('Selecteer je woonplaats');
+            alert('Vul je woonplaats in');
+            woonplaatsInputRef.current?.focus();
+            return;
+          }
+          if (!isValidWoonplaats) {
+            alert('Selecteer een geldige woonplaats uit de lijst');
             woonplaatsInputRef.current?.focus();
             return;
           }
           
+          // Vind de correcte schrijfwijze
+          const correctWoonplaats = alleWoonplaatsnamen.find(naam => 
+            naam.toLowerCase() === woonplaatsValue.toLowerCase()
+          );
+          
           // Sla de woonplaats op in state
-          setWoonplaats(woonplaatsValue);
+          setWoonplaats(correctWoonplaats || woonplaatsValue);
           setDemographics(prev => ({ ...prev, email: emailValue }));
           
           // Bereken risiconiveau
@@ -1843,7 +1858,7 @@ const IkStaSterkTest = () => {
           setRiskLevel(calculatedRiskLevel);
           
           // Sla data op in Supabase
-          saveToDatabase(woonplaatsValue, emailValue, calculatedRiskLevel);
+          saveToDatabase(correctWoonplaats || woonplaatsValue, emailValue, calculatedRiskLevel);
           
           // Ga door naar resultaten
           setReportPage(0); 
