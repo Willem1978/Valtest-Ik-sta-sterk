@@ -976,7 +976,13 @@ const IkStaSterkTest = () => {
 
   // Functie om fysiotherapie contact toe te voegen aan bestaand record
   const updateFysioContact = async (fysioNaam, contactNaam, contactTelefoon) => {
-    if (!savedRecordId) return;
+    console.log('updateFysioContact aangeroepen:', { savedRecordId, fysioNaam, contactNaam, contactTelefoon });
+    
+    if (!savedRecordId) {
+      console.error('Geen savedRecordId beschikbaar - fysio contact kan niet worden opgeslagen');
+      alert('Er ging iets mis. Probeer het opnieuw of neem contact op.');
+      return;
+    }
     
     try {
       const response = await fetch(`${SUPABASE_URL}/rest/v1/testresultaten?id=eq.${savedRecordId}`, {
@@ -995,10 +1001,15 @@ const IkStaSterkTest = () => {
       });
 
       if (response.ok) {
-        console.log('Fysio contact opgeslagen');
+        console.log('Fysio contact succesvol opgeslagen voor record:', savedRecordId);
+      } else {
+        const errorText = await response.text();
+        console.error('Fout bij updaten fysio contact:', response.status, errorText);
+        alert('Er ging iets mis bij het opslaan. Probeer het opnieuw.');
       }
     } catch (error) {
       console.error('Fout bij updaten fysio contact:', error);
+      alert('Er ging iets mis. Controleer je internetverbinding.');
     }
   };
 
@@ -2015,8 +2026,8 @@ const IkStaSterkTest = () => {
           const calculatedRiskLevel = calculateRiskLevel();
           setRiskLevel(calculatedRiskLevel);
           
-          // Sla data op in Supabase
-          saveToDatabase(woonplaats, emailValue, calculatedRiskLevel);
+          // Sla data op in Supabase - AWAIT zodat savedRecordId beschikbaar is
+          await saveToDatabase(woonplaats, emailValue, calculatedRiskLevel);
           
           // Ga door naar resultaten
           setReportPage(0); 
