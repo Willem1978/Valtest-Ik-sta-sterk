@@ -2445,7 +2445,7 @@ const IkStaSterkTest = () => {
                   />
                 </div>
                 <PrimaryButton 
-                  onClick={() => {
+                  onClick={async () => {
                     // Valideer telefoonnummer
                     if (contactForm.telefoon.length !== 10) {
                       setTelefoonError('Vul een geldig 10-cijferig telefoonnummer in');
@@ -2454,6 +2454,8 @@ const IkStaSterkTest = () => {
                     if (!contactForm.naam.trim()) {
                       return;
                     }
+                    // Update database met fysio contact
+                    await updateFysioContact(selectedFysio.naam, contactForm.naam, contactForm.telefoon);
                     setFormSubmitted(true);
                   }} 
                   disabled={!contactForm.naam.trim()}
