@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Eye, Footprints, Dumbbell, Pill, Apple, Home, ChevronRight, ChevronLeft, Check, AlertCircle, Phone, MapPin, Clock, Heart, Shield, Users, FileText, CheckCircle2, ArrowRight, X, Send, ArrowLeft, Calendar, Lightbulb } from 'lucide-react';
+import { Eye, Footprints, Dumbbell, Pill, Apple, Home, ChevronRight, ChevronLeft, Check, AlertCircle, Phone, MapPin, Clock, Heart, Shield, Users, FileText, CheckCircle2, ArrowRight, X, Send, ArrowLeft, Calendar, Lightbulb, Search } from 'lucide-react';
 
 // Supabase configuratie
 const SUPABASE_URL = 'https://bggavoacfhmxcbeiixjf.supabase.co';
@@ -16,6 +16,8 @@ const IkStaSterkTest = () => {
   const [animating, setAnimating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false); // Voorkom dubbel klikken
   const [woonplaats, setWoonplaats] = useState('');
+  const [woonplaatsSearch, setWoonplaatsSearch] = useState('');
+  const [woonplaatsModalOpen, setWoonplaatsModalOpen] = useState(false);
   const [userLocation, setUserLocation] = useState(null); // Behouden voor eventueel toekomstig gebruik
   const [reportPage, setReportPage] = useState(0);
   const [selectedFysio, setSelectedFysio] = useState(null);
@@ -30,6 +32,7 @@ const IkStaSterkTest = () => {
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
   const woonplaatsInputRef = useRef(null);
+  const woonplaatsSearchRef = useRef(null);
   const emailInputRef = useRef(null);
 
   useEffect(() => {
@@ -1071,18 +1074,14 @@ const IkStaSterkTest = () => {
   };
 
   const handleDemographicsSubmit = () => { 
-    // Lees woonplaats uit de ref
-    const woonplaatsValue = woonplaatsInputRef.current ? woonplaatsInputRef.current.value : woonplaats;
-    
-    // Woonplaats validatie - moet in de lijst voorkomen
-    const foundWoonplaats = woonplaatsen.find(w => w.naam.toLowerCase() === woonplaatsValue.toLowerCase());
-    if (!foundWoonplaats) { 
-      // Update state zodat foutmelding getoond wordt
-      setWoonplaats(woonplaatsValue);
+    // Woonplaats validatie - moet ingevuld zijn en in de lijst voorkomen
+    const foundWoonplaats = woonplaatsen.find(w => w.naam.toLowerCase() === woonplaats.toLowerCase());
+    if (!woonplaats || !foundWoonplaats) { 
+      // Toon modal om woonplaats te selecteren
+      setWoonplaatsSearch('');
+      setWoonplaatsModalOpen(true);
       return; 
     } 
-    // Normaliseer de woonplaats naam naar de juiste schrijfwijze
-    setWoonplaats(foundWoonplaats.naam);
     setRiskLevel(calculateRiskLevel()); 
     setReportPage(0); 
     animateTransition(() => setCurrentScreen('report')); 
@@ -1753,7 +1752,7 @@ const IkStaSterkTest = () => {
         </div>
       </div>
 
-      {/* Woonplaats - input met datalist voor typeahead filtering */}
+      {/* Woonplaats - mobiel-vriendelijke selector */}
       <div style={{ marginBottom: '24px' }}>
         <label 
           htmlFor="woonplaatsField"
@@ -1761,38 +1760,203 @@ const IkStaSterkTest = () => {
         >
           In welke plaats woon je?
         </label>
-        <p style={{ fontSize: '13px', color: ZLIM.textMedium, margin: '0 0 10px' }}>Typ je woonplaats en selecteer uit de lijst</p>
-        <input
-          ref={woonplaatsInputRef}
-          id="woonplaatsField"
-          name="woonplaats"
-          type="text"
-          list="woonplaatsenList"
-          autoComplete="off"
-          placeholder="Typ om te zoeken..."
-          defaultValue={woonplaats}
-          key={`woonplaats-${currentScreen}`}
+        <p style={{ fontSize: '13px', color: ZLIM.textMedium, margin: '0 0 10px' }}>Tik om je woonplaats te selecteren</p>
+        
+        {/* Klikbare button die modal opent */}
+        <button
+          type="button"
+          onClick={() => {
+            setWoonplaatsSearch('');
+            setWoonplaatsModalOpen(true);
+            setTimeout(() => woonplaatsSearchRef.current?.focus(), 100);
+          }}
           style={{ 
             width: '100%', 
             padding: '14px 18px', 
             fontSize: '16px', 
-            fontWeight: FONT.medium, 
+            fontWeight: woonplaats ? FONT.medium : FONT.regular, 
             border: `2px solid ${ZLIM.border}`, 
             borderRadius: '10px', 
             fontFamily: FONT.family, 
             boxSizing: 'border-box',
-            WebkitAppearance: 'none'
+            backgroundColor: ZLIM.white,
+            color: woonplaats ? ZLIM.textDark : ZLIM.textLight,
+            textAlign: 'left',
+            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}
-        />
-        <datalist id="woonplaatsenList">
-          {alleWoonplaatsnamen.map(naam => (
-            <option key={naam} value={naam} />
-          ))}
-        </datalist>
+        >
+          <span>{woonplaats || 'Selecteer je woonplaats...'}</span>
+          <ChevronRight size={20} color={ZLIM.textLight} />
+        </button>
+        
         <p style={{ fontSize: '12px', color: ZLIM.textLight, margin: '6px 0 0' }}>
           Bijv. Ulft, Terborg, Silvolde, Arnhem...
         </p>
       </div>
+      
+      {/* Woonplaats selectie modal */}
+      {woonplaatsModalOpen && (
+        <div style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          background: 'rgba(45, 58, 36, 0.5)', 
+          display: 'flex', 
+          flexDirection: 'column',
+          zIndex: 1000
+        }}>
+          <div style={{ 
+            background: ZLIM.white, 
+            width: '100%', 
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Header met zoekbalk */}
+            <div style={{ 
+              padding: '16px', 
+              borderBottom: `1px solid ${ZLIM.border}`,
+              background: ZLIM.white
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                <button
+                  onClick={() => setWoonplaatsModalOpen(false)}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    padding: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <ArrowLeft size={24} color={ZLIM.textDark} />
+                </button>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: FONT.bold, color: ZLIM.textDark }}>
+                  Selecteer woonplaats
+                </h3>
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '10px',
+                padding: '12px 14px',
+                background: ZLIM.bgLight,
+                borderRadius: '10px',
+                border: `2px solid ${ZLIM.border}`
+              }}>
+                <Search size={20} color={ZLIM.textMedium} />
+                <input
+                  ref={woonplaatsSearchRef}
+                  type="text"
+                  value={woonplaatsSearch}
+                  onChange={(e) => setWoonplaatsSearch(e.target.value)}
+                  placeholder="Typ om te zoeken..."
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  style={{ 
+                    flex: 1,
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: '16px',
+                    fontFamily: FONT.family,
+                    outline: 'none',
+                    color: ZLIM.textDark
+                  }}
+                />
+                {woonplaatsSearch && (
+                  <button
+                    onClick={() => setWoonplaatsSearch('')}
+                    style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer' }}
+                  >
+                    <X size={18} color={ZLIM.textMedium} />
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {/* Lijst met woonplaatsen */}
+            <div style={{ 
+              flex: 1, 
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch'
+            }}>
+              {/* Oude IJsselstreek plaatsen bovenaan */}
+              {woonplaatsSearch.length === 0 && (
+                <div style={{ padding: '12px 16px', background: ZLIM.sagePale }}>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: FONT.bold, color: ZLIM.sageDark, textTransform: 'uppercase' }}>
+                    Gemeente Oude IJsselstreek
+                  </p>
+                </div>
+              )}
+              {woonplaatsen
+                .filter(w => {
+                  if (woonplaatsSearch.length === 0) {
+                    // Toon alleen Oude IJsselstreek plaatsen als er niet gezocht wordt
+                    return ['Ulft', 'Silvolde', 'Terborg', 'Gendringen', 'Varsselder', 'Sinderen', 'Breedenbroek', 'Voorst', 'Megchelen', 'Netterden', 'Etten', 'Heelweg', 'Westendorp', 'Bontebrug', 'Kilder', 'IJzerlo'].includes(w.naam);
+                  }
+                  return w.naam.toLowerCase().includes(woonplaatsSearch.toLowerCase());
+                })
+                .slice(0, 50) // Beperk resultaten voor performance
+                .map((w, idx) => (
+                  <button
+                    key={`${w.naam}-${idx}`}
+                    onClick={() => {
+                      setWoonplaats(w.naam);
+                      setWoonplaatsModalOpen(false);
+                    }}
+                    style={{ 
+                      width: '100%',
+                      padding: '16px 20px',
+                      fontSize: '16px',
+                      fontWeight: FONT.medium,
+                      color: ZLIM.textDark,
+                      background: woonplaats === w.naam ? ZLIM.sagePale : ZLIM.white,
+                      border: 'none',
+                      borderBottom: `1px solid ${ZLIM.borderLight}`,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontFamily: FONT.family,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <span>{w.naam}</span>
+                    {woonplaats === w.naam && <Check size={20} color={ZLIM.sage} />}
+                  </button>
+                ))}
+              
+              {/* Zoekresultaten info */}
+              {woonplaatsSearch.length > 0 && woonplaatsen.filter(w => w.naam.toLowerCase().includes(woonplaatsSearch.toLowerCase())).length === 0 && (
+                <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '15px', color: ZLIM.textMedium }}>
+                    Geen plaatsen gevonden voor "{woonplaatsSearch}"
+                  </p>
+                  <p style={{ fontSize: '13px', color: ZLIM.textLight, marginTop: '8px' }}>
+                    Controleer de spelling of probeer een andere zoekterm
+                  </p>
+                </div>
+              )}
+              
+              {/* Hint om te zoeken */}
+              {woonplaatsSearch.length === 0 && (
+                <div style={{ padding: '16px 20px', background: ZLIM.bgLight }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: ZLIM.textMedium, textAlign: 'center' }}>
+                    💡 Woon je buiten Oude IJsselstreek? Typ hierboven om te zoeken.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* E-mail - uncontrolled input met ref */}
       <div style={{ marginBottom: '28px' }}>
@@ -1820,37 +1984,31 @@ const IkStaSterkTest = () => {
 
       <PrimaryButton 
         onClick={async () => {
-          // Lees waarden uit refs
-          const woonplaatsValue = woonplaatsInputRef.current ? woonplaatsInputRef.current.value.trim() : '';
+          // Lees email uit ref
           const emailValue = emailInputRef.current ? emailInputRef.current.value.trim() : '';
           
-          // Valideer tegen de complete woonplaatsenlijst
-          const isValidWoonplaats = alleWoonplaatsnamen.some(naam => 
-            naam.toLowerCase() === woonplaatsValue.toLowerCase()
-          );
-          
+          // Valideer
           if (!demographics.gender) {
             alert('Selecteer je geslacht');
             return;
           }
-          if (!woonplaatsValue) {
-            alert('Vul je woonplaats in');
-            woonplaatsInputRef.current?.focus();
-            return;
-          }
-          if (!isValidWoonplaats) {
-            alert('Selecteer een geldige woonplaats uit de lijst');
-            woonplaatsInputRef.current?.focus();
+          if (!woonplaats) {
+            setWoonplaatsSearch('');
+            setWoonplaatsModalOpen(true);
             return;
           }
           
-          // Vind de correcte schrijfwijze
-          const correctWoonplaats = alleWoonplaatsnamen.find(naam => 
-            naam.toLowerCase() === woonplaatsValue.toLowerCase()
+          // Valideer tegen de complete woonplaatsenlijst
+          const isValidWoonplaats = woonplaatsen.some(w => 
+            w.naam.toLowerCase() === woonplaats.toLowerCase()
           );
           
-          // Sla de woonplaats op in state
-          setWoonplaats(correctWoonplaats || woonplaatsValue);
+          if (!isValidWoonplaats) {
+            setWoonplaatsSearch('');
+            setWoonplaatsModalOpen(true);
+            return;
+          }
+          
           setDemographics(prev => ({ ...prev, email: emailValue }));
           
           // Bereken risiconiveau
@@ -1858,7 +2016,7 @@ const IkStaSterkTest = () => {
           setRiskLevel(calculatedRiskLevel);
           
           // Sla data op in Supabase
-          saveToDatabase(correctWoonplaats || woonplaatsValue, emailValue, calculatedRiskLevel);
+          saveToDatabase(woonplaats, emailValue, calculatedRiskLevel);
           
           // Ga door naar resultaten
           setReportPage(0); 
