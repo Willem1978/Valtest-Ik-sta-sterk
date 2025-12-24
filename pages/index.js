@@ -2275,7 +2275,7 @@ const IkStaSterkTest = () => {
         </div>
 
         {/* Praktijken lijst - gesorteerd op afstand */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
           {sortedFysios.map((fysio, index) => (
             <button 
               key={fysio.id} 
@@ -2283,15 +2283,26 @@ const IkStaSterkTest = () => {
               style={{ 
                 background: ZLIM.white, 
                 border: `2px solid ${index === 0 ? ZLIM.teal : ZLIM.border}`, 
-                borderRadius: '14px', 
+                borderRadius: '16px', 
                 padding: '20px', 
                 cursor: 'pointer', 
                 textAlign: 'left', 
                 fontFamily: FONT.family, 
                 width: '100%', 
-                transition: 'all 0.2s',
-                boxShadow: index === 0 ? '0 2px 8px rgba(74, 155, 140, 0.15)' : 'none',
-                position: 'relative'
+                transition: 'all 0.15s ease',
+                boxShadow: index === 0 ? '0 4px 12px rgba(74, 155, 140, 0.2)' : '0 2px 6px rgba(0,0,0,0.06)',
+                position: 'relative',
+                WebkitTapHighlightColor: 'transparent',
+                touchAction: 'manipulation',
+                minHeight: '140px'
+              }}
+              onTouchStart={(e) => {
+                e.currentTarget.style.transform = 'scale(0.98)';
+                e.currentTarget.style.boxShadow = index === 0 ? '0 2px 6px rgba(74, 155, 140, 0.15)' : '0 1px 3px rgba(0,0,0,0.04)';
+              }}
+              onTouchEnd={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = index === 0 ? '0 4px 12px rgba(74, 155, 140, 0.2)' : '0 2px 6px rgba(0,0,0,0.06)';
               }}
             >
               {index === 0 && (
@@ -2301,44 +2312,46 @@ const IkStaSterkTest = () => {
                   left: '16px',
                   background: ZLIM.teal,
                   color: '#fff',
-                  padding: '4px 10px',
+                  padding: '4px 12px',
                   borderRadius: '6px',
                   fontSize: '11px',
                   fontWeight: FONT.bold
                 }}>
-                  Dichtstbij
+                  ⭐ Dichtstbij
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                <h4 style={{ fontSize: '17px', fontWeight: FONT.bold, color: index === 0 ? ZLIM.teal : ZLIM.textDark, margin: 0 }}>{fysio.naam}</h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                <h4 style={{ fontSize: '18px', fontWeight: FONT.bold, color: index === 0 ? ZLIM.teal : ZLIM.textDark, margin: 0, paddingRight: '10px' }}>{fysio.naam}</h4>
                 <span style={{ 
                   background: index === 0 ? ZLIM.teal : ZLIM.bgGrey, 
                   color: index === 0 ? '#fff' : ZLIM.textMedium, 
-                  padding: '4px 12px', 
-                  borderRadius: '15px', 
-                  fontSize: FONT.tiny, 
-                  fontWeight: FONT.bold 
+                  padding: '6px 14px', 
+                  borderRadius: '20px', 
+                  fontSize: '13px', 
+                  fontWeight: FONT.bold,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0
                 }}>
                   {fysio.afstand !== null ? `${fysio.afstand} km` : '-- km'}
                 </span>
               </div>
-              <p style={{ fontSize: '14px', color: ZLIM.textMedium, margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <p style={{ fontSize: '14px', color: ZLIM.textMedium, margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <MapPin size={16} /> {fysio.adres}, {fysio.plaats}
               </p>
               <div style={{ 
                 background: index === 0 ? ZLIM.teal : ZLIM.sage, 
                 color: '#fff', 
-                padding: '12px 20px', 
-                borderRadius: '8px', 
-                fontSize: '15px', 
+                padding: '14px 20px', 
+                borderRadius: '10px', 
+                fontSize: '16px', 
                 fontWeight: FONT.bold,
                 textAlign: 'center',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px'
+                gap: '10px'
               }}>
-                <Phone size={18} /> Afspraak aanvragen
+                <Phone size={20} /> Afspraak aanvragen →
               </div>
             </button>
           ))}
